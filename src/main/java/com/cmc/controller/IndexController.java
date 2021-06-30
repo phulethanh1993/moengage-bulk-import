@@ -1,17 +1,17 @@
 package com.cmc.controller;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.Properties;
 
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.json.JSONArray;
+import com.cmc.service.ConnectToClusterService;
+import com.cmc.service.LogService;
+import com.cmc.service.ReadExcelService;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -30,7 +30,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Controller
 public class IndexController {
-    private static final String[] SHEET_NAME_LIST = { "User", "Action", "Device" };
 
     @Value("${bulk.api.url}")
     private String url;
@@ -41,6 +40,26 @@ public class IndexController {
     @Value("${secret.key}")
     private String password;
 
+    @Value("${secret.dbURL}")
+    private String dbURL;
+
+    @Value("${secret.masterUsername}")
+    private String MasterUsername;
+
+    @Value("${secret.masterUserPassword}")
+    private String MasterUserPassword;
+
+    private ConnectToClusterService connectToClusterService;
+    private final ReadExcelService readExcelService;
+    private final LogService logService;
+
+    @Autowired
+    public IndexController(ReadExcelService readExcelService, ConnectToClusterService connectToClusterService, LogService logService) {
+        this.readExcelService = readExcelService;
+        this.connectToClusterService = connectToClusterService;
+        this.logService = logService;
+    }
+
     @GetMapping("/")
     public String init() {
         return "index";
@@ -48,11 +67,43 @@ public class IndexController {
 
     @PostMapping("/import")
     public String importData(@RequestParam("file") MultipartFile excelFile, Model model) throws IOException {
-        XSSFWorkbook workbook = new XSSFWorkbook(excelFile.getInputStream());
+        JSONObject mainBulkObj = readExcelService.importData(excelFile);
+        model.addAttribute("responseExcel", bulkImport(mainBulkObj));
+        return "index";
+    }
 
-        JSONObject mainBulkObj = this.createMainBulkObject(workbook);
+    @PostMapping("/import-redshift")
+    public String importDataFromRedshift(Model model) {
+        Connection conn = null;
+        Statement stmt = null;
+        try {
+            Properties props = new Properties();
+            props.setProperty("user", MasterUsername);
+            props.setProperty("password", MasterUserPassword);
+            conn = DriverManager.getConnection(dbURL, props);
 
-        model.addAttribute("response", this.bulkImport(mainBulkObj));
+            stmt = conn.createStatement();
+            String sql = "select * from public.sbf_loan_portfolio;";
+            ResultSet rs = stmt.executeQuery(sql);
+            JSONObject mainBulkObj = connectToClusterService.importData(rs);
+            model.addAttribute("responseRedshift", bulkImport(mainBulkObj));
+        } catch(Exception ex){
+            //For convenience, handle all errors here.
+            ex.printStackTrace();
+        }finally{
+            //Finally block to close resources.
+            try{
+                if(stmt!=null)
+                    stmt.close();
+            }catch(Exception ex){
+            }// nothing we can do
+            try{
+                if(conn!=null)
+                    conn.close();
+            }catch(Exception ex){
+                ex.printStackTrace();
+            }
+        }
         return "index";
     }
 
@@ -65,115 +116,19 @@ public class IndexController {
         headers.setBasicAuth(this.userName, this.password);
 
         HttpEntity<String> entity = new HttpEntity<>(requestJson, headers);
-        String response = null;
+        String response;
+        String importStatus;
         try {
             response = restTemplate.postForObject(this.url, entity, String.class);
+            importStatus = "Successfully imported data";
+            this.logService.addLog(importStatus, requestBody);
         } catch (RestClientException e) {
             System.out.println(e.getStackTrace());
+            importStatus = "Data import not successful";
+            this.logService.addLog(importStatus, requestBody);
             response = e.getMessage();
         }
         return response;
     }
 
-    private JSONObject createMainBulkObject(XSSFWorkbook workbook) {
-        JSONObject mainBulkObj = new JSONObject();
-        mainBulkObj.put("type", "transition");
-        List<JSONObject> bulkAttribute = new ArrayList<>();
-        for (String sheetName : SHEET_NAME_LIST) {
-            XSSFSheet worksheet = workbook.getSheet(sheetName);
-            List<JSONObject> listJsonObject = this.readValueToJsonObject(worksheet);
-            switch (sheetName) {
-            case "User":
-                bulkAttribute.addAll(this.convertToUserAttributesBulk(listJsonObject));
-                break;
-            case "Device":
-                bulkAttribute.addAll(this.convertToDeviceAttributesBulk(listJsonObject));
-                break;
-            case "Action":
-                bulkAttribute.addAll(this.covertToActionsBulk(listJsonObject));
-                break;
-            default:
-                break;
-            }
-        }
-
-        mainBulkObj.put("elements", new JSONArray(bulkAttribute));
-        return mainBulkObj;
-    }
-
-    private List<JSONObject> readValueToJsonObject(XSSFSheet worksheet) {
-        List<JSONObject> listJSONObject = new ArrayList<>();
-        Row headerRow = worksheet.getRow(0);
-        // Row
-        for (int i = 1; i < worksheet.getPhysicalNumberOfRows(); i++) {
-            JSONObject objectJsonUser = new JSONObject();
-            Row dataRow = worksheet.getRow(i);
-            // Cell
-            for (int j = 0; j < dataRow.getPhysicalNumberOfCells(); j++) {
-                // Numeric cell
-                if (dataRow.getCell(j).getCellType() == Cell.CELL_TYPE_NUMERIC) {
-                    objectJsonUser.put(headerRow.getCell(j).getStringCellValue(),
-                            dataRow.getCell(j).getNumericCellValue());
-                    // Boolean Cell
-                } else if (dataRow.getCell(j).getCellType() == Cell.CELL_TYPE_BOOLEAN) {
-                    objectJsonUser.put(headerRow.getCell(j).getStringCellValue(),
-                            dataRow.getCell(j).getBooleanCellValue());
-                    // String Cell
-                } else {
-                    String cellDataValue = dataRow.getCell(j).getStringCellValue();
-                    // Array Object Json
-                    if (cellDataValue.contains("[{")) {
-                        JSONArray jsonArray = new JSONArray(cellDataValue);
-                        objectJsonUser.put(headerRow.getCell(j).getStringCellValue(), jsonArray);
-                    } else if (cellDataValue.contains("{")) {
-                        JSONObject jsonObject = new JSONObject(cellDataValue);
-                        objectJsonUser.put(headerRow.getCell(j).getStringCellValue(), jsonObject);
-                    } else {
-                        objectJsonUser.put(headerRow.getCell(j).getStringCellValue(), cellDataValue);
-                    }
-                }
-            }
-            listJSONObject.add(objectJsonUser);
-        }
-        return listJSONObject;
-    }
-
-    private List<JSONObject> convertToUserAttributesBulk(List<JSONObject> userDataList) {
-        List<JSONObject> userJsonList = new ArrayList<JSONObject>();
-        for (JSONObject userData : userDataList) {
-            JSONObject userJson = new JSONObject();
-            userJson.put("type", "customer");
-            // Using email as customer ID
-            userJson.put("customer_id", userData.toMap().get("email"));
-            userJson.put("attributes", userData);
-            userJsonList.add(userJson);
-        }
-        return userJsonList;
-    }
-
-    private List<JSONObject> convertToDeviceAttributesBulk(List<JSONObject> userDataList) {
-        List<JSONObject> userJsonList = new ArrayList<JSONObject>();
-        for (JSONObject userData : userDataList) {
-            JSONObject userJson = new JSONObject();
-            userJson.put("type", "device");
-            // Using email as customer ID
-            userJson.put("customer_id", userData.toMap().get("email"));
-            userJson.put("attributes", userData);
-            userJsonList.add(userJson);
-        }
-        return userJsonList;
-    }
-
-    private List<JSONObject> covertToActionsBulk(List<JSONObject> actionList) {
-        Map<Object, List<JSONObject>> collectByEmail = actionList.stream()
-                .collect(Collectors.groupingBy(x -> x.toMap().get("email")));
-        return collectByEmail.entrySet().stream().map(entry -> {
-            JSONObject actionJson = new JSONObject();
-            actionJson.put("type", "event");
-            // Using email as customer ID
-            actionJson.put("customer_id", (String) entry.getKey());
-            actionJson.put("actions", new JSONArray(entry.getValue()));
-            return actionJson;
-        }).collect(Collectors.toList());
-    }
 }
