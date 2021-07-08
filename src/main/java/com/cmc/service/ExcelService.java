@@ -14,12 +14,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-public class ReadExcelService extends ApiServices{
+public class ExcelService extends ApiService {
 
-    public JSONObject importData(MultipartFile excelFile) throws IOException {
+    public JSONObject importData(MultipartFile excelFile, String apiKey) throws IOException {
         XSSFWorkbook workbook = new XSSFWorkbook(excelFile.getInputStream());
         List<String> sheetNames = getSheetNames(workbook);
-        JSONObject mainBulkObj = createMainBulkObject(workbook, sheetNames);
+        JSONObject mainBulkObj = createMainBulkObject(workbook, sheetNames, apiKey);
         return mainBulkObj;
     }
 
@@ -31,7 +31,7 @@ public class ReadExcelService extends ApiServices{
         return sheetNames;
     }
 
-    public JSONObject createMainBulkObject(XSSFWorkbook workbook, List<String> sheetNames) {
+    public JSONObject createMainBulkObject(XSSFWorkbook workbook, List<String> sheetNames, String apiKey) {
         JSONObject mainBulkObj = new JSONObject();
         mainBulkObj.put("type", "transition");
         List<JSONObject> bulkAttribute = new ArrayList<>();
@@ -44,7 +44,7 @@ public class ReadExcelService extends ApiServices{
             List<JSONObject> listJsonObject = this.readValueToJsonObject(worksheet);
             switch (sheetName) {
                 case "LP Data Sample":
-                    bulkAttribute.addAll(this.convertToLPDataBulk(listJsonObject));
+                    bulkAttribute.addAll(this.convertToLPDataBulk(listJsonObject, apiKey));
                     readingDone = true;
                     break;
                 case "User":

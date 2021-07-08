@@ -1,15 +1,12 @@
 package com.cmc.controller;
 
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
-import java.util.Properties;
+import java.sql.*;
 
-import com.cmc.service.ConnectToClusterService;
-import com.cmc.service.LogService;
-import com.cmc.service.ReadExcelService;
+import com.cmc.service.ApiService;
+import com.cmc.service.RedshiftClusterService;
+import com.cmc.service.MoengageImportLogService;
+import com.cmc.service.ExcelService;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -49,15 +46,18 @@ public class IndexController {
     @Value("${secret.masterUserPassword}")
     private String MasterUserPassword;
 
-    private ConnectToClusterService connectToClusterService;
-    private final ReadExcelService readExcelService;
-    private final LogService logService;
+    @Value("${secret.google.geolocation.apikey}")
+    private String apiKey;
+
+    private RedshiftClusterService redshiftClusterService;
+    private final ExcelService excelService;
+    private final MoengageImportLogService moengageImportLogService;
 
     @Autowired
-    public IndexController(ReadExcelService readExcelService, ConnectToClusterService connectToClusterService, LogService logService) {
-        this.readExcelService = readExcelService;
-        this.connectToClusterService = connectToClusterService;
-        this.logService = logService;
+    public IndexController(ExcelService excelService, RedshiftClusterService redshiftClusterService, MoengageImportLogService moengageImportLogService, ApiService apiService) {
+        this.excelService = excelService;
+        this.redshiftClusterService = redshiftClusterService;
+        this.moengageImportLogService = moengageImportLogService;
     }
 
     @GetMapping("/")
@@ -67,43 +67,15 @@ public class IndexController {
 
     @PostMapping("/import")
     public String importData(@RequestParam("file") MultipartFile excelFile, Model model) throws IOException {
-        JSONObject mainBulkObj = readExcelService.importData(excelFile);
+        JSONObject mainBulkObj = excelService.importData(excelFile, apiKey);
         model.addAttribute("responseExcel", bulkImport(mainBulkObj));
         return "index";
     }
 
     @PostMapping("/import-redshift")
-    public String importDataFromRedshift(Model model) {
-        Connection conn = null;
-        Statement stmt = null;
-        try {
-            Properties props = new Properties();
-            props.setProperty("user", MasterUsername);
-            props.setProperty("password", MasterUserPassword);
-            conn = DriverManager.getConnection(dbURL, props);
-
-            stmt = conn.createStatement();
-            String sql = "select * from public.sbf_loan_portfolio;";
-            ResultSet rs = stmt.executeQuery(sql);
-            JSONObject mainBulkObj = connectToClusterService.importData(rs);
-            model.addAttribute("responseRedshift", bulkImport(mainBulkObj));
-        } catch(Exception ex){
-            //For convenience, handle all errors here.
-            ex.printStackTrace();
-        }finally{
-            //Finally block to close resources.
-            try{
-                if(stmt!=null)
-                    stmt.close();
-            }catch(Exception ex){
-            }// nothing we can do
-            try{
-                if(conn!=null)
-                    conn.close();
-            }catch(Exception ex){
-                ex.printStackTrace();
-            }
-        }
+    public String importDataFromRedshift(Model model) throws SQLException, JsonProcessingException {
+        JSONObject mainBulkObj = redshiftClusterService.importData(apiKey);
+        model.addAttribute("responseRedshift", bulkImport(mainBulkObj));
         return "index";
     }
 
@@ -121,14 +93,13 @@ public class IndexController {
         try {
             response = restTemplate.postForObject(this.url, entity, String.class);
             importStatus = "Successfully imported data";
-            this.logService.addLog(importStatus, requestBody);
+            this.moengageImportLogService.addLog(importStatus, requestBody);
         } catch (RestClientException e) {
             System.out.println(e.getStackTrace());
             importStatus = "Data import not successful";
-            this.logService.addLog(importStatus, requestBody);
+            this.moengageImportLogService.addLog(importStatus, requestBody);
             response = e.getMessage();
         }
         return response;
     }
-
 }
