@@ -1,10 +1,7 @@
 package com.cmc.model;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.bson.types.ObjectId;
-import org.json.JSONObject;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -20,20 +17,20 @@ public class MoengageImportLog {
     public static final String SEQUENCE_NAME = "customer_sequence";
 
     @Id
-    private int id;
+    private Integer id;
     @NotBlank
-    private String date;
+    private String importDate;
+    @NotBlank
+    private long dataDate;
     @NotBlank
     private String status;
     @NotBlank
-    private JSONObject dataImport;
-    @NotBlank
-    private List<JSONObject> importedUsers;
+    private List<ImportedUser> importedUsers;
 
-    public MoengageImportLog(String currentDate, String status, JSONObject dataImport, List<JSONObject> importedUsersInfo) {
-        this.date = currentDate;
+    public MoengageImportLog(String importDate, long dataDate, String status, List<ImportedUser> importedUsersInfo) {
+        this.importDate = importDate;
+        this.dataDate = dataDate;
         this.status = status;
-        this.dataImport = dataImport;
         this.importedUsers = importedUsersInfo;
     }
 }

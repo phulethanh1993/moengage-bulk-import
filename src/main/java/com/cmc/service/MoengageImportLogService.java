@@ -1,10 +1,14 @@
 package com.cmc.service;
 
 import com.cmc.dao.MoengageImportLogDAO;
+import com.cmc.model.ImportedUser;
 import com.cmc.model.MoengageImportLog;
+import com.cmc.utils.RedShiftUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoOperations;
 import org.springframework.stereotype.Service;
 
 import java.time.ZonedDateTime;
@@ -17,42 +21,48 @@ public class MoengageImportLogService {
 
     private final MoengageImportLogDAO moengageImportLogDAO;
     private final ApiService apiService;
-    private SequenceGeneratorService sequenceGeneratorService;
+    private final SequenceGeneratorService sequenceGeneratorService;
+    private final RedShiftUtils redShiftUtils;
 
     @Autowired
-    public MoengageImportLogService(MoengageImportLogDAO moengageImportLogDAO, ApiService apiService, SequenceGeneratorService sequenceGeneratorService) {
+    public MoengageImportLogService(MoengageImportLogDAO moengageImportLogDAO, ApiService apiService, SequenceGeneratorService sequenceGeneratorService, RedShiftUtils redShiftUtils) {
         this.moengageImportLogDAO = moengageImportLogDAO;
         this.apiService = apiService;
         this.sequenceGeneratorService = sequenceGeneratorService;
+        this.redShiftUtils = redShiftUtils;
     }
 
-    private List<JSONObject> getImportedUsersInfo(JSONArray usersImported) {
-        List<JSONObject> users = new ArrayList<>();
+    private List<ImportedUser> getImportedUsersInfo(JSONArray usersImported) {
+        List<ImportedUser> users = new ArrayList<>();
+        ImportedUser importedUser = new ImportedUser();
         for (int i = 0; i < usersImported.length(); i++) {
-            users.add(usersImported.getJSONObject(i));
+            JSONObject user = usersImported.getJSONObject(i);
+            importedUser.setCustomerId(user.get("customer_id").toString());
+            importedUser.setUpdatedTime(Long.parseLong(user.getJSONObject("attributes").get("data_date").toString()));
+            users.add(importedUser);
         }
-        ArrayList<JSONObject> importantProps = new ArrayList<>();
-        for (JSONObject user : users) {
-            JSONObject prop = new JSONObject();
-            prop.put("customer_id", user.get("customer_id"));
-            prop.put("updated_time", user.getJSONObject("attributes").get("data_date"));
-            importantProps.add(prop);
-        }
-        return importantProps;
+        return users;
     }
 
     public void addLog(String status, JSONObject dataImport) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
         String currentDate = ZonedDateTime.now().format(formatter);
+
         JSONArray usersImported = dataImport.getJSONArray("elements");
 
-        List<JSONObject> importedUsersInfo = getImportedUsersInfo(usersImported);
-        MoengageImportLog moengageImportLog = new MoengageImportLog(currentDate, status, dataImport, importedUsersInfo);
-        moengageImportLog.setId(sequenceGeneratorService.getSequenceNumber(moengageImportLog.SEQUENCE_NAME));
+        List<ImportedUser> importedUsersInfo = getImportedUsersInfo(usersImported);
+        MoengageImportLog lastImported = findLastLog();
+        long latestDataDate = redShiftUtils.findLatestDataDate(importedUsersInfo) == 0 ? lastImported.getDataDate() : redShiftUtils.findLatestDataDate(importedUsersInfo);
+        MoengageImportLog moengageImportLog = new MoengageImportLog(currentDate, latestDataDate, status, importedUsersInfo);
+        moengageImportLog.setId(sequenceGeneratorService.getSequenceNumber(MoengageImportLog.SEQUENCE_NAME));
         this.moengageImportLogDAO.insert(moengageImportLog);
     }
 
     public MoengageImportLog findLastLog() {
-        return this.moengageImportLogDAO.findFirstByOrderByIdDesc();
+        List<MoengageImportLog> moengageImportLog = moengageImportLogDAO.findAll(Sort.by(Sort.Direction.ASC, "_id"));
+        if (moengageImportLog == null || moengageImportLog.size() == 0) {
+            return new MoengageImportLog();
+        }
+        return moengageImportLog.get(moengageImportLog.size() - 1);
     }
 }

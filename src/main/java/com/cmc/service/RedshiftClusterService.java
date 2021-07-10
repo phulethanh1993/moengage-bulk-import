@@ -1,5 +1,8 @@
 package com.cmc.service;
 
+import com.cmc.model.ImportedUser;
+import com.cmc.model.MoengageImportLog;
+import com.cmc.utils.RedShiftUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,10 +27,12 @@ public class RedshiftClusterService extends ApiService {
     private String MasterUserPassword;
 
     private MoengageImportLogService moengageImportLogService;
+    private RedShiftUtils redShiftUtils;
 
     @Autowired
-    public RedshiftClusterService(MoengageImportLogService moengageImportLogService) {
+    public RedshiftClusterService(MoengageImportLogService moengageImportLogService, RedShiftUtils redShiftUtils) {
         this.moengageImportLogService = moengageImportLogService;
+        this.redShiftUtils = redShiftUtils;
     }
 
     public ResultSet initConnection() throws SQLException {
@@ -35,10 +40,14 @@ public class RedshiftClusterService extends ApiService {
         props.setProperty("user", MasterUsername);
         props.setProperty("password", MasterUserPassword);
         Connection conn = DriverManager.getConnection(dbURL, props);
-
-        Statement stmt = conn.createStatement();
-        String sql = "select * from public.sbf_loan_portfolio;";
-        ResultSet rs = stmt.executeQuery(sql);
+        MoengageImportLog lastImported = moengageImportLogService.findLastLog();
+        List<ImportedUser> lastImportedUsers = lastImported.getImportedUsers();
+        long latestDataDate = lastImported.getDataDate() == 0 ? redShiftUtils.findLatestDataDate(lastImportedUsers) : lastImported.getDataDate();
+        ResultSet rs;
+        String sql = "select * from public.sbf_loan_portfolio where data_date > ?";
+        PreparedStatement ps = conn.prepareStatement(sql);
+        ps.setLong(1, latestDataDate);
+        rs = ps.executeQuery();
         return rs;
     }
 
@@ -46,6 +55,7 @@ public class RedshiftClusterService extends ApiService {
         ResultSet rs = initConnection();
         List<JSONObject> dataList = readTableToJSONObject(rs);
         JSONObject mainBulkObj = createMainBulkObject(dataList, apiKey);
+        rs.close();
         return mainBulkObj;
     }
 
@@ -67,12 +77,6 @@ public class RedshiftClusterService extends ApiService {
     public JSONObject createMainBulkObject(List<JSONObject> listJsonObject, String apiKey) {
         JSONObject mainBulkObj = new JSONObject();
         mainBulkObj.put("type", "transition");
-        List<JSONObject> lastImported = moengageImportLogService.findLastLog().getImportedUsers();
-        /// TODO: Compare with the log to see which user has been updated. If not, filter out these users.
-        for (int i = 0; i < lastImported.size(); i++) {
-            
-        }
-        ///
         List<JSONObject> bulkAttribute = new ArrayList<>();
         bulkAttribute.addAll(this.convertToLPDataBulk(listJsonObject, apiKey));
         mainBulkObj.put("elements", new JSONArray(bulkAttribute));
