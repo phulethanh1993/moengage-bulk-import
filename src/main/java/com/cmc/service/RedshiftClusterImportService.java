@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Properties;
 
 @Service
-public class RedshiftClusterService extends ApiService {
+public class RedshiftClusterImportService extends ApiService {
 
     @Value("${secret.dbURL}")
     private String dbURL;
@@ -30,7 +30,7 @@ public class RedshiftClusterService extends ApiService {
     private RedShiftUtils redShiftUtils;
 
     @Autowired
-    public RedshiftClusterService(MoengageImportLogService moengageImportLogService, RedShiftUtils redShiftUtils) {
+    public RedshiftClusterImportService(MoengageImportLogService moengageImportLogService, RedShiftUtils redShiftUtils) {
         this.moengageImportLogService = moengageImportLogService;
         this.redShiftUtils = redShiftUtils;
     }

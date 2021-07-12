@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-public class ExcelService extends ApiService {
+public class ExcelFileImportService extends ApiService {
 
     public JSONObject importData(MultipartFile excelFile, String apiKey) throws IOException {
         XSSFWorkbook workbook = new XSSFWorkbook(excelFile.getInputStream());

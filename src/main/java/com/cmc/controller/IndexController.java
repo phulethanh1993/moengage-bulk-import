@@ -4,9 +4,9 @@ import java.io.IOException;
 import java.sql.*;
 
 import com.cmc.service.ApiService;
-import com.cmc.service.RedshiftClusterService;
+import com.cmc.service.RedshiftClusterImportService;
 import com.cmc.service.MoengageImportLogService;
-import com.cmc.service.ExcelService;
+import com.cmc.service.ExcelFileImportService;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,26 +37,17 @@ public class IndexController {
     @Value("${secret.key}")
     private String password;
 
-    @Value("${secret.dbURL}")
-    private String dbURL;
-
-    @Value("${secret.masterUsername}")
-    private String MasterUsername;
-
-    @Value("${secret.masterUserPassword}")
-    private String MasterUserPassword;
-
     @Value("${secret.google.geolocation.apikey}")
     private String apiKey;
 
-    private RedshiftClusterService redshiftClusterService;
-    private final ExcelService excelService;
+    private RedshiftClusterImportService redshiftClusterImportService;
+    private final ExcelFileImportService excelFileImportService;
     private final MoengageImportLogService moengageImportLogService;
 
     @Autowired
-    public IndexController(ExcelService excelService, RedshiftClusterService redshiftClusterService, MoengageImportLogService moengageImportLogService, ApiService apiService) {
-        this.excelService = excelService;
-        this.redshiftClusterService = redshiftClusterService;
+    public IndexController(ExcelFileImportService excelFileImportService, RedshiftClusterImportService redshiftClusterImportService, MoengageImportLogService moengageImportLogService, ApiService apiService) {
+        this.excelFileImportService = excelFileImportService;
+        this.redshiftClusterImportService = redshiftClusterImportService;
         this.moengageImportLogService = moengageImportLogService;
     }
 
@@ -67,14 +58,14 @@ public class IndexController {
 
     @PostMapping("/import")
     public String importData(@RequestParam("file") MultipartFile excelFile, Model model) throws IOException {
-        JSONObject mainBulkObj = excelService.importData(excelFile, apiKey);
+        JSONObject mainBulkObj = excelFileImportService.importData(excelFile, apiKey);
         model.addAttribute("responseExcel", bulkImport(mainBulkObj));
         return "index";
     }
 
     @PostMapping("/import-redshift")
     public String importDataFromRedshift(Model model) throws SQLException, JsonProcessingException {
-        JSONObject mainBulkObj = redshiftClusterService.importData(apiKey);
+        JSONObject mainBulkObj = redshiftClusterImportService.importData(apiKey);
         model.addAttribute("responseRedshift", bulkImport(mainBulkObj));
         return "index";
     }
@@ -96,7 +87,11 @@ public class IndexController {
             this.moengageImportLogService.addLog(importStatus, requestBody);
         } catch (RestClientException e) {
             System.out.println(e.getStackTrace());
-            importStatus = "Data import not successful";
+            if (requestBody.getJSONArray("elements").length() == 0) {
+                importStatus = "Error. Data import cannot be empty.";
+            } else {
+                importStatus = "Data import not successful, please check the database connectivity.";
+            }
             this.moengageImportLogService.addLog(importStatus, requestBody);
             response = e.getMessage();
         }

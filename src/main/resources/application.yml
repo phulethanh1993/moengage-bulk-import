@@ -1,0 +1,20 @@
+bulk:
+  api:
+    url: https://api-01.moengage.com/v1/transition/MQMA78IFOZEEUR8GK9X31RHR_DEBUG?app_id=MQMA78IFOZEEUR8GK9X31RHR_DEBUG
+app:
+  id: ${env.MOENGAGE_DATAAPI_ID}
+server:
+  port: 5000
+spring:
+  data:
+    mongodb:
+      uri: ${env.MONGO_URL}
+      database: ${env.MONGO_DBNAME}
+secret:
+  key: ${env.MOENGAGE_DATAAPI_KEY}
+  dbURL: ${env.REDSHIFT_CLUSTER_DBURL}
+  masterUsername: connectiontest
+  masterUserPassword: Password123
+  google:
+    geolocation:
+      apikey: ${env.GOOGLE_GEOLOCATION_APIKEY}
