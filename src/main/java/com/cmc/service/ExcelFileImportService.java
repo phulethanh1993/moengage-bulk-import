@@ -1,11 +1,15 @@
 package com.cmc.service;
 
+import com.cmc.model.ImportedUser;
+import com.cmc.model.MoengageImportLog;
+import com.cmc.utils.RedShiftUtils;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -15,6 +19,16 @@ import java.util.List;
 
 @Service
 public class ExcelFileImportService extends ApiService {
+
+    private MoengageImportLogService moengageImportLogService;
+    private RedShiftUtils redShiftUtils;
+
+    @Autowired
+    public ExcelFileImportService(MoengageImportLogService moengageImportLogService, RedShiftUtils redShiftUtils) {
+        this.moengageImportLogService = moengageImportLogService;
+        this.redShiftUtils = redShiftUtils;
+    }
+
 
     public JSONObject importData(MultipartFile excelFile, String apiKey) throws IOException {
         XSSFWorkbook workbook = new XSSFWorkbook(excelFile.getInputStream());
@@ -35,13 +49,16 @@ public class ExcelFileImportService extends ApiService {
         JSONObject mainBulkObj = new JSONObject();
         mainBulkObj.put("type", "transition");
         List<JSONObject> bulkAttribute = new ArrayList<>();
+        MoengageImportLog lastImported = moengageImportLogService.findLastLog();
+        List<ImportedUser> lastImportedUsers = lastImported.getImportedUsers();
+        long latestDataDate = lastImported.getDataDate() == 0 ? redShiftUtils.findLatestDataDate(lastImportedUsers) : lastImported.getDataDate();
         boolean readingDone = false;
         for (String sheetName : sheetNames) {
             if (readingDone) {
                 break;
             }
             XSSFSheet worksheet = workbook.getSheet(sheetName);
-            List<JSONObject> listJsonObject = this.readValueToJsonObject(worksheet);
+            List<JSONObject> listJsonObject = this.readValueToJsonObject(worksheet, latestDataDate);
             switch (sheetName) {
                 case "LP Data Sample":
                     bulkAttribute.addAll(this.convertToLPDataBulk(listJsonObject, apiKey));
@@ -60,12 +77,11 @@ public class ExcelFileImportService extends ApiService {
                     break;
             }
         }
-
         mainBulkObj.put("elements", new JSONArray(bulkAttribute));
         return mainBulkObj;
     }
 
-    private List<JSONObject> readValueToJsonObject(XSSFSheet worksheet) {
+    private List<JSONObject> readValueToJsonObject(XSSFSheet worksheet, long latestDataDate) {
         List<JSONObject> listJSONObject = new ArrayList<>();
         Row headerRow = worksheet.getRow(0);
         int rows = worksheet.getPhysicalNumberOfRows();
@@ -73,9 +89,14 @@ public class ExcelFileImportService extends ApiService {
         for (int i = 1; i < rows; i++) {
             JSONObject objectJsonUser = new JSONObject();
             Row dataRow = worksheet.getRow(i);
+            boolean skippedRow = false;
             int cells = dataRow.getPhysicalNumberOfCells();
             // Cell
             for (int j = 0; j < cells; j++) {
+                if (headerRow.getCell(j).getStringCellValue().equals("Data Date") && dataRow.getCell(j).getNumericCellValue() <= latestDataDate) {
+                    skippedRow = true;
+                    break;
+                }
                 // Numeric cell
                 if (dataRow.getCell(j).getCellType() == Cell.CELL_TYPE_NUMERIC) {
                     objectJsonUser.put(headerRow.getCell(j).getStringCellValue(),
@@ -105,6 +126,9 @@ public class ExcelFileImportService extends ApiService {
                         objectJsonUser.put(headerRow.getCell(j).getStringCellValue(), cellDataValue);
                     }
                 }
+            }
+            if (skippedRow) {
+                continue;
             }
             listJSONObject.add(objectJsonUser);
         }

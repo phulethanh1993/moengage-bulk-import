@@ -37,7 +37,7 @@ public class MoengageImportLogService {
         for (int i = 0; i < usersImported.length(); i++) {
             JSONObject user = usersImported.getJSONObject(i);
             importedUser.setCustomerId(user.get("customer_id").toString());
-            importedUser.setUpdatedTime(Long.parseLong(user.getJSONObject("attributes").get("data_date").toString()));
+            importedUser.setUpdatedTime(user.getJSONObject("attributes").getLong("data_date"));
             users.add(importedUser);
         }
         return users;

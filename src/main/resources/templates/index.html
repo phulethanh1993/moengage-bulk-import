@@ -9,6 +9,15 @@
 
 <body>
     <h1>Welcome to Moengage data import</h1>
+    <p>
+        The data imported will be added to Moengage users segments. Upon viewing an user, the fields: name, first_name, last_name, email, age, gender, mobile
+        in the data will be displayed Tracked Standard Attribute section as well as the main user info area (First Name, Last Name, Email and Mobile). All other
+        fields in the dataset will be under Tracked Custom Attribute.
+    </p>
+    <p>
+        Data will be filtered according to the date of each record. This means that only records with the date later than the last updated date will be selected
+        for import.
+    </p>
     <h3><b>Import from Excel</b></h3>
     <form th:action="@{/import}" method="post" enctype="multipart/form-data">
         <input type="file" th:name="file" accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"/>

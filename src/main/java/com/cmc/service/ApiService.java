@@ -20,6 +20,8 @@ import java.util.stream.Stream;
 public class ApiService {
 
     private static final Map<String, String> dataFields = Stream.of(new String[][] {
+            { "Data Date", "data_date" },
+            { "Customer ID number", "customer_id_number"},
             { "cust_name", "name" },
             { "cust_first_name", "first_name" },
             { "cust_last_name", "last_name" },
@@ -55,7 +57,6 @@ public class ApiService {
     void getGeolocation(JSONObject dataObject) {
         String presentAddress = dataObject.getString("cust_present_address");
         String country = dataObject.getString("cust_present_country_of_residence");
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
         GeocodingResult[] results;
         try {
             results =  GeocodingApi.geocode(context,
