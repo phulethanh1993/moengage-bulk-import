@@ -1,6 +1,6 @@
 package com.cmc.service;
 
-import com.cmc.info.TimerInfo;
+import com.cmc.model.TimerInfo;
 import com.cmc.utils.TimerUtils;
 import org.quartz.JobDetail;
 import org.quartz.Scheduler;

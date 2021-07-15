@@ -1,6 +1,6 @@
 package com.cmc.utils;
 
-import com.cmc.info.TimerInfo;
+import com.cmc.model.TimerInfo;
 import lombok.NoArgsConstructor;
 import org.quartz.*;
 
