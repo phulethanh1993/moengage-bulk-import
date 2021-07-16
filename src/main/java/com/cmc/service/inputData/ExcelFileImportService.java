@@ -1,7 +1,8 @@
-package com.cmc.service;
+package com.cmc.service.inputData;
 
 import com.cmc.model.ImportedUser;
 import com.cmc.model.MoengageImportLog;
+import com.cmc.service.importLog.MoengageImportLogService;
 import com.cmc.utils.RedShiftUtils;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;

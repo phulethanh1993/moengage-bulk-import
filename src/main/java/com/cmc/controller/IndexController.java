@@ -3,7 +3,10 @@ package com.cmc.controller;
 import java.io.IOException;
 import java.sql.*;
 
-import com.cmc.service.*;
+import com.cmc.service.bulkImport.BulkImportService;
+import com.cmc.service.inputData.ExcelFileImportService;
+import com.cmc.service.inputData.RedshiftClusterImportService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,6 +15,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
 @Controller
@@ -20,15 +24,15 @@ public class IndexController {
     @Value("${secret.google.geolocation.apikey}")
     private String apiKey;
 
-    private final JobController jobController;
     private String IMPORT_TYPE = "";
     private final ExcelFileImportService excelFileImportService;
+    private final RedshiftClusterImportService redshiftClusterImportService;
     private final BulkImportService bulkImportService;
 
     @Autowired
-    public IndexController(JobController jobController, ExcelFileImportService excelFileImportService, BulkImportService bulkImportService) {
-        this.jobController = jobController;
+    public IndexController(ExcelFileImportService excelFileImportService, RedshiftClusterImportService redshiftClusterImportService, BulkImportService bulkImportService) {
         this.excelFileImportService = excelFileImportService;
+        this.redshiftClusterImportService = redshiftClusterImportService;
         this.bulkImportService = bulkImportService;
     }
 
@@ -38,6 +42,7 @@ public class IndexController {
     }
 
     @PostMapping("/import")
+    @ResponseBody
     public String importData(@RequestParam("file") MultipartFile excelFile, Model model) throws IOException {
         IMPORT_TYPE = "Excel";
         JSONObject mainBulkObj = excelFileImportService.importData(excelFile, apiKey);
@@ -46,11 +51,12 @@ public class IndexController {
     }
 
     @PostMapping("/import-redshift")
-    public String importDataFromRedshift(Model model) throws SQLException {
+    @ResponseBody
+    public String importDataFromRedshift(Model model) throws SQLException, JsonProcessingException {
         IMPORT_TYPE = "Redshift";
-        jobController.runBulkImportJob(IMPORT_TYPE);
-        model.addAttribute("responseRedshift");
-        return "index";
+        JSONObject mainBulkObj = redshiftClusterImportService.importData(apiKey);
+        String resp = bulkImportService.bulkImport(mainBulkObj, IMPORT_TYPE);
+        return resp;
     }
 
 }

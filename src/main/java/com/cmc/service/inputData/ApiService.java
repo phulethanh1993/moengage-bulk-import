@@ -1,4 +1,4 @@
-package com.cmc.service;
+package com.cmc.service.inputData;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -35,7 +35,7 @@ public class ApiService {
     private final Map<String, String> countriesCode = new HashMap<>();
     private final DecimalFormat df = new DecimalFormat("0.00");
 
-    JSONObject modifyAttributes(JSONObject dataObject, String apiKey) {
+    public JSONObject modifyAttributes(JSONObject dataObject, String apiKey) {
         if (countriesCode.isEmpty()) {
             getCountryCode();
         }
@@ -54,7 +54,7 @@ public class ApiService {
         return dataObject;
     }
 
-    void getGeolocation(JSONObject dataObject) {
+    private void getGeolocation(JSONObject dataObject) {
         String presentAddress = dataObject.getString("cust_present_address");
         String country = dataObject.getString("cust_present_country_of_residence");
         GeocodingResult[] results;
@@ -68,14 +68,14 @@ public class ApiService {
         }
     }
 
-    void getCountryCode() {
+    private void getCountryCode() {
         for (String iso : Locale.getISOCountries()) {
             Locale l = new Locale("", iso);
             this.countriesCode.put(l.getISO3Country(), l.getDisplayCountry());
         }
     }
 
-    List<JSONObject> convertToUserAttributesBulk(List<JSONObject> userDataList) {
+    public List<JSONObject> convertToUserAttributesBulk(List<JSONObject> userDataList) {
         List<JSONObject> userJsonList = new ArrayList<>();
         for (JSONObject userData : userDataList) {
             JSONObject userJson = new JSONObject();
@@ -88,7 +88,7 @@ public class ApiService {
         return userJsonList;
     }
 
-    List<JSONObject> convertToDeviceAttributesBulk(List<JSONObject> userDataList) {
+    public List<JSONObject> convertToDeviceAttributesBulk(List<JSONObject> userDataList) {
         List<JSONObject> userJsonList = new ArrayList<>();
         for (JSONObject userData : userDataList) {
             JSONObject userJson = new JSONObject();
@@ -101,7 +101,7 @@ public class ApiService {
         return userJsonList;
     }
 
-    List<JSONObject> covertToActionsBulk(List<JSONObject> actionList) {
+    public List<JSONObject> covertToActionsBulk(List<JSONObject> actionList) {
         Map<Object, List<JSONObject>> collectByEmail = actionList.stream()
                 .collect(Collectors.groupingBy(x -> x.toMap().get("email")));
         return collectByEmail.entrySet().stream().map(entry -> {
@@ -114,7 +114,7 @@ public class ApiService {
         }).collect(Collectors.toList());
     }
 
-    List<JSONObject> convertToLPDataBulk(List<JSONObject> LPDataList, String apiKey) {
+    public List<JSONObject> convertToLPDataBulk(List<JSONObject> LPDataList, String apiKey) {
         List<JSONObject> LPJsonList = new ArrayList<>();
         for (JSONObject LPData : LPDataList) {
             JSONObject LPJson = new JSONObject();

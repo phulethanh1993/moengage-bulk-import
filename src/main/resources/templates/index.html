@@ -26,10 +26,14 @@
     <div th:text="${responseExcel}"></div>
 
     <h3><b>OR</b></h3>
-    <form th:action="@{/import-redshift}" method="post" enctype="multipart/form-data">
+    <form id="fetch-from-Redshift" method="post" enctype="multipart/form-data">
         <input th:type="submit" value="Import From Redshift" />
     </form>
-    <div th:text="${responseRedshift}"></div>
+
+    <div id="respRedshift"></div>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"
+            integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+    <script type="text/javascript" th:src="@{/js/index.js}"></script>
 </body>
 
 </html>

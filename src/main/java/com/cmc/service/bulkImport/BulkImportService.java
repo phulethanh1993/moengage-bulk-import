@@ -1,5 +1,6 @@
-package com.cmc.service;
+package com.cmc.service.bulkImport;
 
+import com.cmc.service.importLog.MoengageImportLogService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONObject;

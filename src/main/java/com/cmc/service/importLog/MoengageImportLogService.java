@@ -1,8 +1,10 @@
-package com.cmc.service;
+package com.cmc.service.importLog;
 
 import com.cmc.dao.MoengageImportLogDAO;
 import com.cmc.model.ImportedUser;
 import com.cmc.model.MoengageImportLog;
+import com.cmc.service.inputData.ApiService;
+import com.cmc.service.dbSequence.SequenceGeneratorService;
 import com.cmc.utils.RedShiftUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;

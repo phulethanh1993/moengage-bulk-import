@@ -1,4 +1,4 @@
-package com.cmc.service;
+package com.cmc.service.dbSequence;
 
 import com.cmc.model.DbSequence;
 import org.springframework.beans.factory.annotation.Autowired;
