@@ -1,8 +1,10 @@
 package com.cmc.service.inputData;
 
+import com.cmc.dto.ResourceDTO;
 import com.cmc.model.ImportedUser;
 import com.cmc.model.MoengageImportLog;
 import com.cmc.service.importLog.MoengageImportLogService;
+import com.cmc.service.resource.ResourceService;
 import com.cmc.utils.RedShiftUtils;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
@@ -19,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-public class ExcelFileImportService extends ApiService {
+public class ExcelFileImportService implements ResourceService {
 
     private MoengageImportLogService moengageImportLogService;
     private RedShiftUtils redShiftUtils;
@@ -62,17 +64,17 @@ public class ExcelFileImportService extends ApiService {
             List<JSONObject> listJsonObject = this.readValueToJsonObject(worksheet, latestDataDate);
             switch (sheetName) {
                 case "LP Data Sample":
-                    bulkAttribute.addAll(this.convertToLPDataBulk(listJsonObject, apiKey));
+//                    bulkAttribute.addAll(this.convertToLPDataBulk(listJsonObject, apiKey));
                     readingDone = true;
                     break;
                 case "User":
-                    bulkAttribute.addAll(this.convertToUserAttributesBulk(listJsonObject));
+//                    bulkAttribute.addAll(this.convertToUserAttributesBulk(listJsonObject));
                     break;
                 case "Device":
-                    bulkAttribute.addAll(this.convertToDeviceAttributesBulk(listJsonObject));
+//                    bulkAttribute.addAll(this.convertToDeviceAttributesBulk(listJsonObject));
                     break;
                 case "Action":
-                    bulkAttribute.addAll(this.covertToActionsBulk(listJsonObject));
+//                    bulkAttribute.addAll(this.covertToActionsBulk(listJsonObject));
                     break;
                 default:
                     break;
@@ -136,4 +138,8 @@ public class ExcelFileImportService extends ApiService {
         return listJSONObject;
     }
 
+    @Override
+    public ResourceDTO getResources(Object data) {
+        return null;
+    }
 }
