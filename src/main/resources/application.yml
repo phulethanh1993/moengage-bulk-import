@@ -15,6 +15,3 @@ secret:
   dbURL: ${env.REDSHIFT_CLUSTER_DBURL}
   masterUsername: connectiontest
   masterUserPassword: Password123
-  google:
-    geolocation:
-      apikey: ${env.GOOGLE_GEOLOCATION_APIKEY}

@@ -3,9 +3,9 @@ package com.cmc.service.importLog;
 import com.cmc.dao.MoengageImportLogDAO;
 import com.cmc.model.ImportedUser;
 import com.cmc.model.MoengageImportLog;
-import com.cmc.service.inputData.ApiService;
+import com.cmc.service.bulkImport.ApiService;
 import com.cmc.service.dbSequence.SequenceGeneratorService;
-import com.cmc.utils.RedShiftUtils;
+import com.cmc.utils.CustomerUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,14 +23,14 @@ public class MoengageImportLogService {
     private final MoengageImportLogDAO moengageImportLogDAO;
     private final ApiService apiService;
     private final SequenceGeneratorService sequenceGeneratorService;
-    private final RedShiftUtils redShiftUtils;
+    private final CustomerUtils customerUtils;
 
     @Autowired
-    public MoengageImportLogService(MoengageImportLogDAO moengageImportLogDAO, ApiService apiService, SequenceGeneratorService sequenceGeneratorService, RedShiftUtils redShiftUtils) {
+    public MoengageImportLogService(MoengageImportLogDAO moengageImportLogDAO, ApiService apiService, SequenceGeneratorService sequenceGeneratorService, CustomerUtils customerUtils) {
         this.moengageImportLogDAO = moengageImportLogDAO;
         this.apiService = apiService;
         this.sequenceGeneratorService = sequenceGeneratorService;
-        this.redShiftUtils = redShiftUtils;
+        this.customerUtils = customerUtils;
     }
 
     private List<ImportedUser> getImportedUsersInfo(JSONArray usersImported) {
@@ -53,7 +53,7 @@ public class MoengageImportLogService {
 
         List<ImportedUser> importedUsersInfo = getImportedUsersInfo(usersImported);
         MoengageImportLog lastImported = findLastLog();
-        long latestDataDate = redShiftUtils.findLatestDataDate(importedUsersInfo) == 0 ? lastImported.getDataDate() : redShiftUtils.findLatestDataDate(importedUsersInfo);
+        long latestDataDate = customerUtils.findLatestDataDate(importedUsersInfo) == 0 ? lastImported.getDataDate() : customerUtils.findLatestDataDate(importedUsersInfo);
         MoengageImportLog moengageImportLog = new MoengageImportLog(currentDate, latestDataDate, status, importedUsersInfo);
         moengageImportLog.setId(sequenceGeneratorService.getSequenceNumber(MoengageImportLog.SEQUENCE_NAME));
         this.moengageImportLogDAO.insert(moengageImportLog);

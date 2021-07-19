@@ -1,22 +1,22 @@
 package com.cmc.service.inputData;
 
+import com.cmc.dto.ResourceDTO;
+import com.cmc.model.DbInfo;
 import com.cmc.model.ImportedUser;
 import com.cmc.model.MoengageImportLog;
 import com.cmc.service.importLog.MoengageImportLogService;
-import com.cmc.utils.RedShiftUtils;
-import org.json.JSONArray;
+import com.cmc.service.resource.ResourceService;
+import com.cmc.utils.CustomerUtils;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 
 @Service
-public class RedshiftClusterImportService extends ApiService {
+public class RedshiftClusterImportService implements ResourceService {
 
     @Value("${secret.dbURL}")
     private String dbURL;
@@ -28,36 +28,27 @@ public class RedshiftClusterImportService extends ApiService {
     private String MasterUserPassword;
 
     private MoengageImportLogService moengageImportLogService;
-    private RedShiftUtils redShiftUtils;
+    private CustomerUtils customerUtils;
 
     @Autowired
-    public RedshiftClusterImportService(MoengageImportLogService moengageImportLogService, RedShiftUtils redShiftUtils) {
+    public RedshiftClusterImportService(MoengageImportLogService moengageImportLogService, CustomerUtils customerUtils) {
         this.moengageImportLogService = moengageImportLogService;
-        this.redShiftUtils = redShiftUtils;
+        this.customerUtils = customerUtils;
     }
 
-    public ResultSet initConnection() throws SQLException {
+    public ResultSet initConnection(String schema, String table) throws SQLException {
         Properties props = new Properties();
         props.setProperty("user", MasterUsername);
         props.setProperty("password", MasterUserPassword);
         Connection conn = DriverManager.getConnection(dbURL, props);
-        MoengageImportLog lastImported = moengageImportLogService.findLastLog();
-        List<ImportedUser> lastImportedUsers = lastImported.getImportedUsers();
-        long latestDataDate = lastImported.getDataDate() == 0 ? redShiftUtils.findLatestDataDate(lastImportedUsers) : lastImported.getDataDate();
+        long latestDataDate = getLatestDataDate();
         ResultSet rs;
-        String sql = "select * from public.sbf_loan_portfolio where data_date > ?";
+        String sql = "select * from %s.%s where data_date > ?";
+        sql = String.format(sql, schema, table);
         PreparedStatement ps = conn.prepareStatement(sql);
         ps.setLong(1, latestDataDate);
         rs = ps.executeQuery();
         return rs;
-    }
-
-    public JSONObject importData(String apiKey) throws SQLException {
-        ResultSet rs = initConnection();
-        List<JSONObject> dataList = readTableToJSONObject(rs);
-        JSONObject mainBulkObj = createMainBulkObject(dataList, apiKey);
-        rs.close();
-        return mainBulkObj;
     }
 
     private List<JSONObject> readTableToJSONObject(ResultSet rs) throws SQLException {
@@ -75,13 +66,30 @@ public class RedshiftClusterImportService extends ApiService {
         return listJSONObject;
     }
 
-    public JSONObject createMainBulkObject(List<JSONObject> listJsonObject, String apiKey) {
-        JSONObject mainBulkObj = new JSONObject();
-        mainBulkObj.put("type", "transition");
-        List<JSONObject> bulkAttribute = new ArrayList<>();
-        bulkAttribute.addAll(this.convertToLPDataBulk(listJsonObject, apiKey));
-        mainBulkObj.put("elements", new JSONArray(bulkAttribute));
-        return mainBulkObj;
+    @Override
+    public ResourceDTO getResources(Object object) {
+        DbInfo dbInfo = (DbInfo) object;
+        ResourceDTO resourceDTO = new ResourceDTO();
+        Map<String, List<JSONObject>> tablesFetching = new HashMap<>();
+        ResultSet rs;
+        List<JSONObject> dataList;
+        try {
+            rs = initConnection(dbInfo.getSchema(), dbInfo.getTableName());
+            dataList = readTableToJSONObject(rs);
+            tablesFetching.put(dbInfo.getTableName(), dataList);
+            rs.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        resourceDTO.setDataImport(tablesFetching);
+        return resourceDTO;
     }
 
+    @Override
+    public long getLatestDataDate() {
+        MoengageImportLog lastImported = moengageImportLogService.findLastLog();
+        List<ImportedUser> lastImportedUsers = lastImported.getImportedUsers();
+        long latestDataDate = lastImported.getDataDate() == 0 ? customerUtils.findLatestDataDate(lastImportedUsers) : lastImported.getDataDate();
+        return latestDataDate;
+    }
 }

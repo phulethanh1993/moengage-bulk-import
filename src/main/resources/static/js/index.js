@@ -1,9 +1,9 @@
 $(document).ready(function () {
     $("#fetch-from-Redshift").submit(function (e) {
         e.preventDefault();
-        pollServer();
+        pollServerRedshift();
     })
-    function pollServer(){
+    function pollServerRedshift() {
         $.ajax({ // this is a json object inside the function
             url: "/import-redshift",
             type: 'POST',
@@ -18,7 +18,7 @@ $(document).ready(function () {
             },
             // removed for clarity
             complete: function(){
-                setTimeout(pollServer, 20000);
+                setTimeout(pollServerRedshift, 20000);
             }
         });
     }

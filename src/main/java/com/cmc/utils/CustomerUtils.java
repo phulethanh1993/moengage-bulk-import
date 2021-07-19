@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import java.util.List;
 
 @Configuration
-public class RedShiftUtils {
+public class CustomerUtils {
     public long findLatestDataDate(List<ImportedUser> importedUsers) {
         long latestDataDate = 0;
         if (importedUsers == null || importedUsers.size() == 0) {

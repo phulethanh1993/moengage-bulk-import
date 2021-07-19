@@ -3,9 +3,12 @@ package com.cmc.controller;
 import java.io.IOException;
 import java.sql.*;
 
+import com.cmc.dto.ResourceDTO;
+import com.cmc.model.DbInfo;
 import com.cmc.service.bulkImport.BulkImportService;
 import com.cmc.service.inputData.ExcelFileImportService;
 import com.cmc.service.inputData.RedshiftClusterImportService;
+import com.cmc.service.resource.ResourceService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,9 +23,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Controller
 public class IndexController {
-
-    @Value("${secret.google.geolocation.apikey}")
-    private String apiKey;
 
     private String IMPORT_TYPE = "";
     private final ExcelFileImportService excelFileImportService;
@@ -42,11 +42,11 @@ public class IndexController {
     }
 
     @PostMapping("/import")
-    @ResponseBody
     public String importData(@RequestParam("file") MultipartFile excelFile, Model model) throws IOException {
         IMPORT_TYPE = "Excel";
-        JSONObject mainBulkObj = excelFileImportService.importData(excelFile, apiKey);
-        model.addAttribute("responseExcel", bulkImportService.bulkImport(mainBulkObj, IMPORT_TYPE));
+        ResourceDTO resourceDTO = excelFileImportService.getResources(excelFile);
+        String resp = bulkImportService.bulkImport(resourceDTO, IMPORT_TYPE);
+        model.addAttribute("responseExcel", resp);
         return "index";
     }
 
@@ -54,8 +54,9 @@ public class IndexController {
     @ResponseBody
     public String importDataFromRedshift(Model model) throws SQLException, JsonProcessingException {
         IMPORT_TYPE = "Redshift";
-        JSONObject mainBulkObj = redshiftClusterImportService.importData(apiKey);
-        String resp = bulkImportService.bulkImport(mainBulkObj, IMPORT_TYPE);
+        DbInfo dbInfo = new DbInfo("dev", "public", "sbf_loan_portfolio");
+        ResourceDTO resourceDTO = redshiftClusterImportService.getResources(dbInfo);
+        String resp = bulkImportService.bulkImport(resourceDTO, IMPORT_TYPE);
         return resp;
     }
 

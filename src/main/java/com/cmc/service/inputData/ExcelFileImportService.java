@@ -3,9 +3,10 @@ package com.cmc.service.inputData;
 import com.cmc.dto.ResourceDTO;
 import com.cmc.model.ImportedUser;
 import com.cmc.model.MoengageImportLog;
+import com.cmc.service.bulkImport.ApiService;
 import com.cmc.service.importLog.MoengageImportLogService;
 import com.cmc.service.resource.ResourceService;
-import com.cmc.utils.RedShiftUtils;
+import com.cmc.utils.CustomerUtils;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
@@ -18,26 +19,20 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
-public class ExcelFileImportService implements ResourceService {
+public class ExcelFileImportService extends ApiService implements ResourceService {
 
     private MoengageImportLogService moengageImportLogService;
-    private RedShiftUtils redShiftUtils;
+    private CustomerUtils customerUtils;
 
     @Autowired
-    public ExcelFileImportService(MoengageImportLogService moengageImportLogService, RedShiftUtils redShiftUtils) {
+    public ExcelFileImportService(MoengageImportLogService moengageImportLogService, CustomerUtils customerUtils) {
         this.moengageImportLogService = moengageImportLogService;
-        this.redShiftUtils = redShiftUtils;
-    }
-
-
-    public JSONObject importData(MultipartFile excelFile, String apiKey) throws IOException {
-        XSSFWorkbook workbook = new XSSFWorkbook(excelFile.getInputStream());
-        List<String> sheetNames = getSheetNames(workbook);
-        JSONObject mainBulkObj = createMainBulkObject(workbook, sheetNames, apiKey);
-        return mainBulkObj;
+        this.customerUtils = customerUtils;
     }
 
     private List<String> getSheetNames(XSSFWorkbook workbook) {
@@ -48,40 +43,19 @@ public class ExcelFileImportService implements ResourceService {
         return sheetNames;
     }
 
-    public JSONObject createMainBulkObject(XSSFWorkbook workbook, List<String> sheetNames, String apiKey) {
-        JSONObject mainBulkObj = new JSONObject();
-        mainBulkObj.put("type", "transition");
-        List<JSONObject> bulkAttribute = new ArrayList<>();
-        MoengageImportLog lastImported = moengageImportLogService.findLastLog();
-        List<ImportedUser> lastImportedUsers = lastImported.getImportedUsers();
-        long latestDataDate = lastImported.getDataDate() == 0 ? redShiftUtils.findLatestDataDate(lastImportedUsers) : lastImported.getDataDate();
-        boolean readingDone = false;
+    public ResourceDTO setResourceDTO(XSSFWorkbook workbook, List<String> sheetNames) {
+        ResourceDTO resourceDTO = new ResourceDTO();
+        Map<String, List<JSONObject>> sheetsInFile = new HashMap<>();
+        long latestDataDate = getLatestDataDate();
         for (String sheetName : sheetNames) {
-            if (readingDone) {
-                break;
-            }
-            XSSFSheet worksheet = workbook.getSheet(sheetName);
-            List<JSONObject> listJsonObject = this.readValueToJsonObject(worksheet, latestDataDate);
-            switch (sheetName) {
-                case "LP Data Sample":
-//                    bulkAttribute.addAll(this.convertToLPDataBulk(listJsonObject, apiKey));
-                    readingDone = true;
-                    break;
-                case "User":
-//                    bulkAttribute.addAll(this.convertToUserAttributesBulk(listJsonObject));
-                    break;
-                case "Device":
-//                    bulkAttribute.addAll(this.convertToDeviceAttributesBulk(listJsonObject));
-                    break;
-                case "Action":
-//                    bulkAttribute.addAll(this.covertToActionsBulk(listJsonObject));
-                    break;
-                default:
-                    break;
+            if (sheetName.equals("LP Data Sample")) {
+                XSSFSheet worksheet = workbook.getSheet(sheetName);
+                List<JSONObject> listJsonObject = this.readValueToJsonObject(worksheet, latestDataDate);
+                sheetsInFile.put(sheetName, listJsonObject);
             }
         }
-        mainBulkObj.put("elements", new JSONArray(bulkAttribute));
-        return mainBulkObj;
+        resourceDTO.setDataImport(sheetsInFile);
+        return resourceDTO;
     }
 
     private List<JSONObject> readValueToJsonObject(XSSFSheet worksheet, long latestDataDate) {
@@ -139,7 +113,24 @@ public class ExcelFileImportService implements ResourceService {
     }
 
     @Override
-    public ResourceDTO getResources(Object data) {
-        return null;
+    public ResourceDTO getResources(Object object) {
+        MultipartFile excelFile = (MultipartFile) object;
+        XSSFWorkbook workbook = null;
+        try {
+            workbook = new XSSFWorkbook(excelFile.getInputStream());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        List<String> sheetNames = getSheetNames(workbook);
+        ResourceDTO resourceDTO = setResourceDTO(workbook, sheetNames);
+        return resourceDTO;
+    }
+
+    @Override
+    public long getLatestDataDate() {
+        MoengageImportLog lastImported = moengageImportLogService.findLastLog();
+        List<ImportedUser> lastImportedUsers = lastImported.getImportedUsers();
+        long latestDataDate = lastImported.getDataDate() == 0 ? customerUtils.findLatestDataDate(lastImportedUsers) : lastImported.getDataDate();
+        return latestDataDate;
     }
 }

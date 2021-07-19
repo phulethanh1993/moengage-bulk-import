@@ -1,13 +1,15 @@
 package com.cmc.dto;
 
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.json.JSONObject;
 
+import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 
-public interface ResourceDTO {
-    String sources = null;
-    List<JSONObject> users = null;
-    List<JSONObject> devices = null;
-    List<JSONObject> actions = null;
+@Data
+@NoArgsConstructor
+public class ResourceDTO implements Serializable {
+    Map<String, List<JSONObject>> dataImport;
 }
