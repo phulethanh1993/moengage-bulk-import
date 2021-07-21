@@ -15,11 +15,11 @@ $(document).ready(function () {
             },
             error: function (res) {
                 $("#respRedshift").html(res);
-            },
-            // removed for clarity
-            complete: function(){
-                setTimeout(pollServerRedshift, 20000);
-            }
+                },
+            // // removed for clarity
+            // complete: function(){
+            //     setTimeout(pollServerRedshift, 20000);
+            // }
         });
     }
 });

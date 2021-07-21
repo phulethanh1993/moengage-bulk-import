@@ -14,5 +14,5 @@ public class TimerInfo implements Serializable {
     private boolean runForever;
     private long repeatIntervalMs;
     private long initialOffsetMs;
-    private String callbackData;
+    private DbInfo callbackData;
 }

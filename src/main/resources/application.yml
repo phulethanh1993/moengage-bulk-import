@@ -1,6 +1,6 @@
 bulk:
   api:
-    url: https://api-01.moengage.com/v1/transition/MQMA78IFOZEEUR8GK9X31RHR_DEBUG?app_id=MQMA78IFOZEEUR8GK9X31RHR_DEBUG
+    url: https://api-01.moengage.com/v1/transition/1NZ9MZFA546B7ZLQALH1K1EE?app_id=1NZ9MZFA546B7ZLQALH1K1EE
 app:
   id: ${env.MOENGAGE_DATAAPI_ID}
 server:
