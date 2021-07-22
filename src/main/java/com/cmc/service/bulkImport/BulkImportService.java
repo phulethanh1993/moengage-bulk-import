@@ -48,6 +48,7 @@ public class BulkImportService extends ApiService {
                 break;
             }
             switch (entry.getKey()) {
+                case "SBF Campaign Management Moengage Analysis 22 Jun.csv":
                 case "sbf_loan_portfolio":
                 case "LP Data Sample":
                     bulkAttribute.addAll(this.convertToLPDataBulk(entry.getValue()));

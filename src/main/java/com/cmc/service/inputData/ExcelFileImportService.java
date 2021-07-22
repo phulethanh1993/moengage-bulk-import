@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-public class ExcelFileImportService extends ApiService implements ResourceService {
+public class ExcelFileImportService implements ResourceService {
 
     private MoengageImportLogService moengageImportLogService;
     private CustomerUtils customerUtils;

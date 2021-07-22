@@ -18,13 +18,19 @@
         Data will be filtered according to the date of each record. This means that only records with the date later than the last updated date will be selected
         for import.
     </p>
-    <h3><b>Import from Excel</b></h3>
-    <form th:action="@{/import}" method="post" enctype="multipart/form-data">
-        <input type="file" th:name="file" accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"/>
-        <input th:type="submit" value="Import" />
-    </form>
-    <div th:text="${responseExcel}"></div>
-
+    <h3><b>Import from Excel or CSV</b></h3>
+    <div th:class="importFiles">
+        <form th:action="@{/import-excel}" method="post" enctype="multipart/form-data">
+            <input type="file" th:name="excel" accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"/>
+            <input th:type="submit" value="Import From Excel" />
+        </form>
+        <div th:text="${responseExcel}"></div>
+        <form th:action="@{/import-csv}" method="post" enctype="multipart/form-data">
+            <input type="file" th:name="csv" accept=".csv"/>
+            <input th:type="submit" value="Import From CSV" />
+        </form>
+        <div th:text="${responseCSV}"></div>
+    </div>
     <h3><b>OR</b></h3>
     <form id="fetch-from-Redshift" method="post" enctype="multipart/form-data">
         <input th:type="submit" value="Import From Redshift" />

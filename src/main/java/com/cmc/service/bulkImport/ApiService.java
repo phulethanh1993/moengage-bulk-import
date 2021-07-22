@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -14,8 +15,8 @@ import java.util.stream.Stream;
 public class ApiService {
 
     private static final Map<String, String> dataFields = Stream.of(new String[][] {
-            { "Data Date", "data_date" },
-            { "Customer ID number", "customer_id_number"},
+            { "data date", "data_date" },
+            { "customer id number", "customer_id_number"},
             { "cust_name", "name" },
             { "cust_first_name", "first_name" },
             { "cust_last_name", "last_name" },
@@ -28,10 +29,10 @@ public class ApiService {
     public JSONObject modifyAttributes(JSONObject dataObject) {
         dataObject.toMap().entrySet()
                 .stream()
-                .filter(entry -> dataFields.containsKey(entry.getKey()))
+                .filter(entry -> dataFields.containsKey(entry.getKey().toLowerCase()))
                 .forEach(entry -> {
                     String key = entry.getKey();
-                    dataObject.put(dataFields.get(key), dataObject.get(key));
+                    dataObject.put(dataFields.get(key.toLowerCase()).toLowerCase(), dataObject.get(key));
                     dataObject.remove(key);
                 });
         return dataObject;
@@ -90,4 +91,5 @@ public class ApiService {
         }
         return LPJsonList;
     }
+
 }
