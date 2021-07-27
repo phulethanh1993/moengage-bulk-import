@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class JobController {
     private final SchedulerService schedulerService;
-    private final long REPEAT_INTERVAL = 10000;
+    private final long REPEAT_INTERVAL = 34234235;
     private final int INITIAL_OFFSET = 1000;
 
     @Autowired

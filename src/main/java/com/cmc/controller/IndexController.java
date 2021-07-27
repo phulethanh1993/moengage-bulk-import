@@ -49,7 +49,7 @@ public class IndexController {
 
     @PostMapping("/import-csv")
     public String importCSV(@RequestParam("csv") MultipartFile csvFile, Model model) throws IOException {
-        IMPORT_TYPE = "Excel";
+        IMPORT_TYPE = "CSV";
         ResourceDTO resourceDTO = csvFileImportService.getResources(csvFile);
         String resp = bulkImportService.bulkImport(resourceDTO, IMPORT_TYPE);
         model.addAttribute("responseCSV", resp);

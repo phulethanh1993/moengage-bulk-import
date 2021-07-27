@@ -50,7 +50,7 @@ public class ExcelFileImportService implements ResourceService {
         for (String sheetName : sheetNames) {
             if (sheetName.equals("LP Data Sample")) {
                 XSSFSheet worksheet = workbook.getSheet(sheetName);
-                List<JSONObject> listJsonObject = this.readValueToJsonObject(worksheet, latestDataDate);
+                List<JSONObject> listJsonObject = this.readValueToJsonObject(worksheet);
                 sheetsInFile.put(sheetName, listJsonObject);
             }
         }
@@ -58,7 +58,7 @@ public class ExcelFileImportService implements ResourceService {
         return resourceDTO;
     }
 
-    private List<JSONObject> readValueToJsonObject(XSSFSheet worksheet, long latestDataDate) {
+    private List<JSONObject> readValueToJsonObject(XSSFSheet worksheet) {
         List<JSONObject> listJSONObject = new ArrayList<>();
         Row headerRow = worksheet.getRow(0);
         int rows = worksheet.getPhysicalNumberOfRows();
@@ -70,10 +70,6 @@ public class ExcelFileImportService implements ResourceService {
             int cells = dataRow.getPhysicalNumberOfCells();
             // Cell
             for (int j = 0; j < cells; j++) {
-                if (headerRow.getCell(j).getStringCellValue().equals("Data Date") && dataRow.getCell(j).getNumericCellValue() <= latestDataDate) {
-                    skippedRow = true;
-                    break;
-                }
                 // Numeric cell
                 if (dataRow.getCell(j).getCellType() == Cell.CELL_TYPE_NUMERIC) {
                     objectJsonUser.put(headerRow.getCell(j).getStringCellValue(),
