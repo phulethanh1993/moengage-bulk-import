@@ -8,12 +8,19 @@
 </head>
 
 <body>
-    <h1>Welcome</h1>
+    <h1>Welcome to Moengage data import</h1>
+    <h3><b>Import from Excel</b></h3>
     <form th:action="@{/import}" method="post" enctype="multipart/form-data">
         <input type="file" th:name="file" accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"/>
         <input th:type="submit" value="Import" />
     </form>
-    <div th:text="${response}"></div>
+    <div th:text="${responseExcel}"></div>
+
+    <h3><b>OR</b></h3>
+    <form th:action="@{/import-redshift}" method="post" enctype="multipart/form-data">
+        <input th:type="submit" value="Import From Redshift" />
+    </form>
+    <div th:text="${responseRedshift}"></div>
 </body>
 
 </html>

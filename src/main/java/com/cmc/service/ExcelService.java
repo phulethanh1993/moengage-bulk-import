@@ -12,28 +12,26 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
-public class ReadExcelService {
+public class ExcelService extends ApiService {
 
-    public JSONObject importData(MultipartFile excelFile) throws IOException {
+    public JSONObject importData(MultipartFile excelFile, String apiKey) throws IOException {
         XSSFWorkbook workbook = new XSSFWorkbook(excelFile.getInputStream());
         List<String> sheetNames = getSheetNames(workbook);
-        JSONObject mainBulkObj = createMainBulkObject(workbook, sheetNames);
+        JSONObject mainBulkObj = createMainBulkObject(workbook, sheetNames, apiKey);
         return mainBulkObj;
     }
 
     private List<String> getSheetNames(XSSFWorkbook workbook) {
         List<String> sheetNames = new ArrayList<>();
         for (int i=0; i<workbook.getNumberOfSheets(); i++) {
-            sheetNames.add( workbook.getSheetName(i) );
+            sheetNames.add(workbook.getSheetName(i));
         }
         return sheetNames;
     }
 
-    public JSONObject createMainBulkObject(XSSFWorkbook workbook, List<String> sheetNames) {
+    public JSONObject createMainBulkObject(XSSFWorkbook workbook, List<String> sheetNames, String apiKey) {
         JSONObject mainBulkObj = new JSONObject();
         mainBulkObj.put("type", "transition");
         List<JSONObject> bulkAttribute = new ArrayList<>();
@@ -46,7 +44,7 @@ public class ReadExcelService {
             List<JSONObject> listJsonObject = this.readValueToJsonObject(worksheet);
             switch (sheetName) {
                 case "LP Data Sample":
-                    bulkAttribute.addAll(this.convertToLPDataBulk(listJsonObject));
+                    bulkAttribute.addAll(this.convertToLPDataBulk(listJsonObject, apiKey));
                     readingDone = true;
                     break;
                 case "User":
@@ -113,56 +111,4 @@ public class ReadExcelService {
         return listJSONObject;
     }
 
-    private List<JSONObject> convertToLPDataBulk(List<JSONObject> LPDataList) {
-        List<JSONObject> LPJsonList = new ArrayList<>();
-        for (JSONObject LPData : LPDataList) {
-            JSONObject LPJson = new JSONObject();
-            LPJson.put("type", "customer");
-            // Using "Customer ID number" as customer ID
-            LPJson.put("customer_id", LPData.toMap().get("Customer ID number"));
-            LPJson.put("attributes", LPData);
-            LPJsonList.add(LPJson);
-        }
-        return LPJsonList;
-    }
-
-
-    private List<JSONObject> convertToUserAttributesBulk(List<JSONObject> userDataList) {
-        List<JSONObject> userJsonList = new ArrayList<>();
-        for (JSONObject userData : userDataList) {
-            JSONObject userJson = new JSONObject();
-            userJson.put("type", "customer");
-            // Using email as customer ID
-            userJson.put("customer_id", userData.toMap().get("email"));
-            userJson.put("attributes", userData);
-            userJsonList.add(userJson);
-        }
-        return userJsonList;
-    }
-
-    private List<JSONObject> convertToDeviceAttributesBulk(List<JSONObject> userDataList) {
-        List<JSONObject> userJsonList = new ArrayList<>();
-        for (JSONObject userData : userDataList) {
-            JSONObject userJson = new JSONObject();
-            userJson.put("type", "device");
-            // Using email as customer ID
-            userJson.put("customer_id", userData.toMap().get("email"));
-            userJson.put("attributes", userData);
-            userJsonList.add(userJson);
-        }
-        return userJsonList;
-    }
-
-    private List<JSONObject> covertToActionsBulk(List<JSONObject> actionList) {
-        Map<Object, List<JSONObject>> collectByEmail = actionList.stream()
-                .collect(Collectors.groupingBy(x -> x.toMap().get("email")));
-        return collectByEmail.entrySet().stream().map(entry -> {
-            JSONObject actionJson = new JSONObject();
-            actionJson.put("type", "event");
-            // Using email as customer ID
-            actionJson.put("customer_id", (String) entry.getKey());
-            actionJson.put("actions", new JSONArray(entry.getValue()));
-            return actionJson;
-        }).collect(Collectors.toList());
-    }
 }
